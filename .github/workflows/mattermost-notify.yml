@@ -9,7 +9,7 @@ on:
         type: string
         default: "custom"
       job_status:
-        description: "Required for 'status' preset. Pass ${{ needs.job_name.result }}"
+        description: "Required for 'status' preset. The status of the job to report (e.g., success, failure)"
         required: false
         type: string
       title:
