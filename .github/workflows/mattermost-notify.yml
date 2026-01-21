@@ -53,7 +53,7 @@ jobs:
              if [[ "$STATUS" == "approved" ]]; then 
                 ICON=":white_check_mark:"
                 HEADER="PR Approved"
-             else [[ "$STATUS" == "changes_requested" ]]; then 
+             elif [[ "$STATUS" == "changes_requested" ]]; then 
                 ICON=":arrows_counterclockwise:"
                 HEADER="Changes Requested"
              fi
