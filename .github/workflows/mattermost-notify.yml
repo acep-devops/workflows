@@ -1,0 +1,118 @@
+name: Mattermost Notification
+
+on:
+  workflow_call:
+    inputs:
+      preset:
+        description: "Standard message type: 'review_request', 'review_decision', 'status', or 'custom'"
+        required: false
+        type: string
+        default: "custom"
+      job_status:
+        description: "Required for 'status' preset. The status of the job to report (e.g., success, failure)"
+        required: false
+        type: string
+      title:
+        description: "Title override for status notifications (e.g. 'Docker Deploy')"
+        required: false
+        type: string
+      message:
+        description: "Custom text or additional notes"
+        required: false
+        type: string
+        default: ""
+    secrets:
+      MM_WEBHOOK_URL:
+        required: true
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine Message
+        id: msg
+        shell: bash
+        run: |
+          PRESET="${{ inputs.preset }}"
+          CUSTOM_MSG="${{ inputs.message }}"
+          CUSTOM_TITLE="${{ inputs.title }}"
+          TEXT=""
+
+          # --- PRESET LOGIC ---
+          if [[ "$PRESET" == "review_request" ]]; then
+            TEXT=":eyes: **Review Requested**
+          **Repo:** ${{ github.repository }}
+          **PR:** #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}
+          **Reviewer:** @${{ github.event.requested_reviewer.login }}
+          [Review Now](${{ github.event.pull_request.html_url }})"
+            
+          elif [[ "$PRESET" == "review_decision" ]]; then
+             STATUS="${{ github.event.review.state }}"
+             
+             # Determine Icon and Header based on the specific review state
+             if [[ "$STATUS" == "approved" ]]; then 
+                ICON=":white_check_mark:"
+                HEADER="PR Approved"
+             elif [[ "$STATUS" == "changes_requested" ]]; then 
+                ICON=":arrows_counterclockwise:"
+                HEADER="Changes Requested"
+             fi
+             
+             TEXT="$ICON **$HEADER**
+          **Repo:** ${{ github.repository }}
+          **PR:** #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}
+          **Reviewer:** ${{ github.actor }}
+          [Read Review](${{ github.event.review.html_url }})"
+
+          elif [[ "$PRESET" == "status" ]]; then
+             RESULT="${{ inputs.job_status }}"
+             
+             # Determine the Icon and the Status Word (Suffix)
+             if [[ "$RESULT" == "success" ]]; then
+                ICON=":white_check_mark:"
+                STATUS_SUFFIX="Succeeded"
+             else
+                ICON=":x:"
+                STATUS_SUFFIX="Failed"
+             fi
+             
+             # Determine the Name (Prefix)
+             if [[ -n "$CUSTOM_TITLE" ]]; then 
+                PREFIX="$CUSTOM_TITLE"
+             else 
+                PREFIX="Action"
+             fi
+
+             # Determine the Header (e.g. "Docker Deploy" + "Succeeded")
+             FINAL_HEADER="$PREFIX $STATUS_SUFFIX"
+
+             TEXT="$ICON **$FINAL_HEADER**
+          **Repo:** ${{ github.repository }}
+          **Ref:** ${{ github.ref_name }}
+          **Author:** ${{ github.actor }}
+          [View Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          fi
+          
+          # --- COMBINE LOGIC ---
+          # Add message if provided
+          if [[ -n "$CUSTOM_MSG" ]]; then
+            if [[ -n "$TEXT" ]]; then
+              TEXT="$TEXT
+              
+          ---
+          $CUSTOM_MSG"
+            else
+              TEXT="$CUSTOM_MSG"
+            fi
+          fi
+          
+          echo "final_message<<EOF" >> $GITHUB_OUTPUT
+          echo "$TEXT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Send Alert
+        uses: mattermost/action-mattermost-notify@master
+        with:
+          MATTERMOST_WEBHOOK_URL: ${{ secrets.MM_WEBHOOK_URL }}
+          MATTERMOST_ICON_URL: https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png
+          TEXT: ${{ steps.msg.outputs.final_message }}
