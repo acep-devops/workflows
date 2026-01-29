@@ -41,7 +41,6 @@ jobs:
           # --- PRESET LOGIC ---
           if [[ "$PRESET" == "review_request" ]]; then
             TEXT=":eyes: **Review Requested**
-          
           **Repo:** ${{ github.repository }}
           **PR:** #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}
           **Requested By:** ${{ github.actor }}
