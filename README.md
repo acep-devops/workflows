@@ -67,17 +67,17 @@ Reviewer: ReviewerName
 
 ```md
 🔄 Changes Requested
-**Repo:** RepoName
-**PR:** PR# - PR Title
-**Reviewer:** ReviewerName
+Repo: RepoName
+PR: PR# - PR Title
+Reviewer: ReviewerName
 [Read Review](link)
 ```
 
 ```md
 ✅ PR Approved
-**Repo:** RepoName
-**PR:** PR# - PR Title
-**Reviewer:** ReviewerName
+Repo: RepoName
+PR: PR# - PR Title
+Reviewer: ReviewerName
 [Read Review](link)
 ```
 
