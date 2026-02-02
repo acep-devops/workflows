@@ -11,7 +11,7 @@ To use this workflow, create a job in your caller workflow (e.g., `.github/workf
 | Input | Description | Required | Default |
 | :--- | :--- | :--- | :--- |
 | `preset` | Type of message: `status`, `review_request`, `review_decision`, or `custom`. | No | `custom` |
-| `job_status` | The result of the previous job (`success`, `failure`). Required for `status`. | No | N/A |
+| `job_status` | The result of the previous job (`success`, `failure`, `other`). Required for `status`. | No | N/A |
 | `title` | Overrides the prefix in status messages (e.g., "Production Deploy"). | No | `Action` |
 | `message` | Appends a custom string or note to the bottom of any preset. | No | `""` |
 

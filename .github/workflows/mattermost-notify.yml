@@ -72,9 +72,12 @@ jobs:
              if [[ "$RESULT" == "success" ]]; then
                 ICON=":white_check_mark:"
                 STATUS_SUFFIX="Succeeded"
-             else
+             elif [[ "$RESULT" == "failure" ]]; then
                 ICON=":x:"
                 STATUS_SUFFIX="Failed"
+             else
+                ICON=":grey_question:"
+                STATUS_SUFFIX="Other"
              fi
              
              # Determine the Name (Prefix)
