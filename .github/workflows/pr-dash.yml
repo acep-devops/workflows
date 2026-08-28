@@ -33,4 +33,4 @@ jobs:
           export RAW_JSON=$(gh api graphql -f query="$QUERY")
 
           # Run the Python script
-          python3 update_dash.py
+          python3 scripts/update_dash.py
