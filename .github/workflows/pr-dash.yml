@@ -4,8 +4,7 @@ on:
   schedule:
     - cron: '*/5 * * * *'
   workflow_dispatch:
-  pull_request:
-  repository_dispatch: # Allows instant triggers from other repos
+  repository_dispatch:
 
 jobs:
   update-dashboard:
@@ -13,39 +12,51 @@ jobs:
     steps:
       - name: Update Mattermost Dashboard Post
         env:
-          GH_TOKEN: ${{ secrets.ORG_READ_PAT }}
+          GH_TOKEN: ${{ secrets.ORG_READ_PAT || secrets.GITHUB_TOKEN }}
           MM_URL: ${{ secrets.MATTERMOST_URL }}
           MM_TOKEN: ${{ secrets.MATTERMOST_TOKEN }}
           POST_ID: ${{ secrets.MATTERMOST_POST_ID }}
           TARGET_ORGS: "ACEP"
         run: |
+          # Build org search string
           ORG_FILTER=""
           for org in $TARGET_ORGS; do
             ORG_FILTER="$ORG_FILTER org:$org"
           done
 
-          # Fetch PRs with createdAt and updatedAt timestamps
+          # Fetch open PRs via GraphQL
           QUERY="query { search(query: \"$ORG_FILTER is:pr is:open\", type: ISSUE, first: 50) { issueCount nodes { ... on PullRequest { number title url reviewDecision createdAt updatedAt author { login } repository { name } } } } }"
           RAW_JSON=$(gh api graphql -f query="$QUERY")
 
-          PR_COUNT=$(echo "$RAW_JSON" | jq -r '.data.search.issueCount')
+          # 1. Catch API/Auth errors explicitly (do not overwrite Mattermost with "No PRs" if API fails)
+          if echo "$RAW_JSON" | jq -e '.errors' > /dev/null 2>&1; then
+            echo "::error::GitHub GraphQL API returned an error:"
+            echo "$RAW_JSON" | jq '.errors'
+            exit 1
+          fi
 
-          if [ "$PR_COUNT" -eq 0 ] || [ "$PR_COUNT" == "null" ]; then
+          PR_COUNT=$(echo "$RAW_JSON" | jq -r '.data.search.issueCount // 0')
+
+          if [ "$PR_COUNT" -eq 0 ]; then
             MESSAGE="### 📋 Live PR Queue\n\n🎉 *No open PRs waiting for review!*"
           else
-            # Process and group PRs using jq
-            MESSAGE=$(echo "$RAW_JSON" | jq -r '
+            NOW_EPOCH=$(date +%s)
+
+            # 2. Process PRs with robust ISO date parsing
+            MESSAGE=$(echo "$RAW_JSON" | jq --argjson now "$NOW_EPOCH" --argjson total "$PR_COUNT" -r '
               .data.search.nodes |
-              (now) as $now |
               map(
                 . + {
-                  days_old: (($now - (.createdAt | fromdateiso8601)) / 86400 | floor),
-                  days_updated: (($now - (.updatedAt | fromdateiso8601)) / 86400 | floor)
+                  created_epoch: (.createdAt | split(".")[0] | split("Z")[0] + "Z" | fromdateiso8601 catch 0)
                 }
               ) |
               map(
                 . + {
-                  stale_flag: (if .days_old > 14 then " ⚠️ *STALE*" else "" end),
+                  days_old: (if .created_epoch > 0 then (($now - .created_epoch) / 86400 | floor) else 0 end)
+                }
+              ) |
+              map(
+                . + {
                   formatted: ("• **[" + .repository.name + "#" + (.number|tostring) + "](" + .url + ")** " + .title + " (*@" + .author.login + "*) — *" + (if .days_old == 0 then "Today" else (.days_old|tostring) + "d ago" end) + "*" + (if .days_old > 14 then " ⚠️" else "" end))
                 }
               ) |
@@ -54,7 +65,7 @@ jobs:
                 changes_requested: map(select(.reviewDecision == "CHANGES_REQUESTED") | .formatted),
                 approved: map(select(.reviewDecision == "APPROVED") | .formatted)
               } |
-              "### 📋 Live PR Queue\n\n" +
+              "### 📋 Live PR Queue (" + ($total|tostring) + " Open)\n\n" +
               (if (.needs_review | length) > 0 then "#### ⏳ Needs Review\n" + (.needs_review | join("\n")) + "\n\n" else "" end) +
               (if (.changes_requested | length) > 0 then "#### 🔴 Waiting on Author (Changes Requested)\n" + (.changes_requested | join("\n")) + "\n\n" else "" end) +
               (if (.approved | length) > 0 then "#### ✅ Ready to Merge (Approved)\n" + (.approved | join("\n")) + "\n\n" else "" end)
@@ -64,6 +75,7 @@ jobs:
             MESSAGE="$MESSAGE---\n*🔄 Last refreshed: $NOW*"
           fi
 
+          # Encode payload safely and update post
           PAYLOAD=$(jq -n --arg id "$POST_ID" --arg msg "$MESSAGE" '{id: $id, message: $msg}')
 
           curl -s -X PUT "$MM_URL/api/v4/posts/$POST_ID" \
