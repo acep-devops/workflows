@@ -18,7 +18,7 @@ jobs:
           MM_URL: ${{ secrets.MATTERMOST_URL }}
           MM_TOKEN: ${{ secrets.MATTERMOST_TOKEN }}
           POST_ID: ${{ secrets.MATTERMOST_POST_ID }}
-          TARGET_ORGS: "acep-devops"
+          TARGET_ORGS: "acep-devops acep-aedg acep-uaf"
         run: |
           # 1. Build Org Search Qualifier
           ORG_FILTER=""
