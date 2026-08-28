@@ -1,0 +1,39 @@
+name: Update Mattermost PR Dashboard
+
+on:
+  schedule:
+    - cron: '*/5 * * * *' # Refreshes the dashboard every 5 minutes
+  workflow_dispatch:      # Allows manual refresh from the GitHub UI
+
+jobs:
+  update-dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Mattermost Dashboard Post
+        env:
+          GH_TOKEN: ${{ secrets.ORG_READ_PAT }}
+          MM_URL: ${{ secrets.MATTERMOST_URL }}
+          MM_TOKEN: ${{ secrets.MATTERMOST_TOKEN }}
+          POST_ID: ${{ secrets.MATTERMOST_POST_ID }}
+          ORG_NAME: "acep-devops"
+        run: |
+          # Query all open PRs across the organization
+          QUERY="query { search(query: \"org:$ORG_NAME is:pr is:open\", type: ISSUE, first: 50) { nodes { ... on PullRequest { number title url reviewDecision author { login } repository { name } } } } }"
+
+          RAW_JSON=$(gh api graphql -f query="$QUERY")
+
+          # Format as Markdown: Repo#Number | Title | Author | Status
+          PR_DATA=$(echo "$RAW_JSON" | jq -r '.data.search.nodes | map("• **[" + .repository.name + "#" + (.number|tostring) + "](" + .url + ")** " + .title + " | Author: @" + .author.login + " | Status: *" + (if .reviewDecision then .reviewDecision else "NEEDS REVIEW" end) + "*") | join("\n")')
+
+          if [ -z "$PR_DATA" ] || [ "$PR_DATA" == "null" ]; then
+            MESSAGE="### 📋 Live PR Queue\n\n🎉 *No open PRs waiting for review!*"
+          else
+            MESSAGE="### 📋 Live PR Queue\n\n$PR_DATA"
+          fi
+
+          PAYLOAD=$(jq -n --arg id "$POST_ID" --arg msg "$MESSAGE" '{id: $id, message: $msg}')
+
+          curl -s -X PUT "$MM_URL/api/v4/posts/$POST_ID" \
+            -H "Authorization: Bearer $MM_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
