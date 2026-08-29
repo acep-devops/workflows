@@ -72,18 +72,17 @@ jobs:
 
                   time_str = "Today" if days_old == 0 else f"{days_old}d ago"
                   stale = " ⚠️" if days_old > 14 else ""
-                  conflict = " 🚨 CONFLICT" if mergeable == "CONFLICTING" else ""
+                  conflict = " 🚨 Resolve Conflict" if mergeable == "CONFLICTING" else ""
 
                   # Bot check
                   is_bot = author.lower() in ["dependabot", "renovate", "github-actions", "dependabot[bot]"]
                   bot_icon = " 🤖" if is_bot else ""
 
-                  # Clean title for tooltip, and shorten for display if too long
+                  # Clean title for tooltip ONLY
                   safe_title = title.replace(chr(34), "").replace(chr(39), "")
-                  display_title = title if len(title) <= 60 else title[:57] + "..."
 
-                  # Build the line: Link with tooltip -> Bot icon -> Title -> Author -> Conflict/Stale -> Days
-                  line = f"**[{repo}#{num}]({url} {chr(34)}{safe_title}{chr(34)})**{bot_icon} {display_title} (*@{author}*){conflict}{stale} ❗ `{time_str}`"
+                  # Build the line: Link (with title in tooltip) -> Bot icon -> Author -> Conflict/Stale -> Days
+                  line = f"**[{repo}#{num}]({url} {chr(34)}{safe_title}{chr(34)})**{bot_icon} (*@{author}*){conflict}{stale} `{time_str}`"
 
                   if decision == "APPROVED":
                       approved.append(line)
@@ -95,11 +94,11 @@ jobs:
               message = f"### 📋 Live PR Queue ({total_count} Open)\n\n"
 
               if changes_requested:
-                  message += "#### 🔴 Waiting on Author (Changes Requested)\n" + "\n".join(changes_requested) + "\n\n"
+                  message += "#### 🔁 Changes Requested\n" + "\n".join(changes_requested) + "\n\n"
               if approved:
-                  message += "#### ✅ Ready to Merge (Approved)\n" + "\n".join(approved) + "\n\n"
+                  message += "#### ✅ Approved\n" + "\n".join(approved) + "\n\n"
               if needs_review:
-                  message += "#### ⏳ Needs Review\n" + "\n".join(needs_review) + "\n\n"
+                  message += "#### 👀 Needs Review\n" + "\n".join(needs_review) + "\n\n"
 
               refresh_time = now.strftime("%b %d, %H:%M UTC")
               message += f"---\n*🔄 Last refreshed: {refresh_time}*"
