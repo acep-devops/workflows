@@ -83,7 +83,7 @@ jobs:
                   safe_title = title.replace(chr(34), "").replace(chr(39), "")
 
                   # Build the line: Link (with title in tooltip) -> Bot icon -> Author -> Conflict/Stale -> Days
-                  line = f"**[{repo}#{num}]({url} {chr(34)}{safe_title}{chr(34)})**{bot_icon} (*@{author}*){conflict}{stale} `{time_str}`"
+                  line = f"**[{repo}#{num}]({url} {chr(34)}{safe_title}{chr(34)})**{bot_icon} (*@ {author}*){conflict}{stale} `{time_str}`"
 
                   if decision == "APPROVED":
                       approved.append(line)
