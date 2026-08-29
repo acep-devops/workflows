@@ -1,0 +1,38 @@
+name: Update Mattermost PR Dashboard
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+  repository_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  update-dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Update Mattermost Dashboard Post
+        env:
+          GH_TOKEN: ${{ secrets.ORG_READ_PAT }}
+          MM_URL: ${{ secrets.MATTERMOST_URL }}
+          MM_TOKEN: ${{ secrets.MATTERMOST_TOKEN }}
+          POST_ID: ${{ secrets.MATTERMOST_POST_ID }}
+          TARGET_ORGS: "acep-devops acep-aedg acep-uaf"
+        run: |
+          # 1. Build Org Search Qualifier
+          ORG_FILTER=""
+          for org in $TARGET_ORGS; do
+            ORG_FILTER="$ORG_FILTER org:$org"
+          done
+
+          # 2. Query GitHub GraphQL API (Filters out drafts, checks mergeable status)
+          QUERY="query { search(query: \"$ORG_FILTER is:pr is:open draft:false\", type: ISSUE, first: 50) { issueCount nodes { ... on PullRequest { number title url reviewDecision mergeable createdAt updatedAt author { login } repository { name } } } } }"
+
+          export RAW_JSON=$(gh api graphql -f query="$QUERY")
+
+          # 3. Run the Python script to format and post
+          python3 scripts/update_dashboard.py
