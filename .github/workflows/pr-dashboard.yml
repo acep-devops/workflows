@@ -92,7 +92,7 @@ jobs:
                   else:
                       needs_review.append(line)
 
-              message = f"### ({total_count} PR's Open)\n\n  **Orgs: acep-devops, acep-uaf, acep-aedg**\n\n  *Hover over link to see PR title*"
+              message = f"### ({total_count} PRs Open)\n\n  **Orgs: acep-devops, acep-uaf, acep-aedg**\n\n  *Hover over link to see PR title*"
 
               if approved:
                   message += "#### ✅ Approved\n" + "\n".join(approved) + "\n\n"
