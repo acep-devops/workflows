@@ -93,7 +93,7 @@ jobs:
                   else:
                       needs_review.append(line)
 
-              message = f"### Open PRs ({total_count}) \n\n **Orgs: acep-devops, acep-uaf, acep-aedg**\n\n *Runs every 5 minutes (may be delayed during high GitHub Actions load)*\n\n *Hover over link to see PR title*\n\n ---\n"
+              message = f"### Open PRs ({total_count}) \n\n **Orgs: acep-devops, acep-uaf, acep-aedg**\n\n *Runs every 5 minutes (may be delayed during high GitHub Actions load) OR is instant when repo has the trigger-dashboard.yml action*\n\n *Hover over link to see PR title*\n\n ---\n"
 
               if approved:
                   message += "#### ✅ Approved\n" + "\n".join(approved) + "\n\n"
