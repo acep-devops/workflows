@@ -102,6 +102,11 @@ jobs:
               if needs_review:
                   message += "#### 👀 Needs Review\n" + "\n".join(needs_review) + "\n\n"
 
+              # Check if there are more PRs than what fit in the query response
+              if total_count > len(nodes):
+                  more_count = total_count - len(nodes)
+                  message += f"*... and {more_count} more open PRs not shown*\n\n"
+
               refresh_time = now.strftime("%b %d, %I:%M %p %Z")
               message += f"---\n*🔄 Last updated: {refresh_time}*"
 
