@@ -26,7 +26,7 @@ jobs:
             ORG_FILTER="$ORG_FILTER org:$org"
           done
 
-          QUERY="query { search(query: \"$ORG_FILTER is:pr is:open draft:false\", type: ISSUE, first: 50) { issueCount nodes { ... on PullRequest { number title url reviewDecision mergeable createdAt updatedAt author { login } repository { name } } } } }"
+          QUERY="query { search(query: \"$ORG_FILTER is:pr is:open draft:false\", type: ISSUE, first: 50) { issueCount nodes { ... on PullRequest { number title url reviewDecision mergeable createdAt updatedAt author { login } repository { name } reviewRequests(first: 1) { totalCount } } } } }"
           export RAW_JSON=$(gh api graphql -f query="$QUERY")
 
           python3 -c '
@@ -70,6 +70,9 @@ jobs:
                   created_raw = pr.get("createdAt")
                   mergeable = pr.get("mergeable", "UNKNOWN")
 
+                  review_requests_data = pr.get("reviewRequests") or {}
+                  review_requests_count = review_requests_data.get("totalCount", 0)
+
                   days_old = 0
                   if created_raw:
                       try:
@@ -83,7 +86,6 @@ jobs:
                           days_old = max(0, days_old) # Prevent negative numbers just in case
                       except Exception:
                           pass
-
 
                   if days_old == 0:
                       time_str = "Today"
@@ -109,7 +111,12 @@ jobs:
                   if decision == "APPROVED":
                       approved.append(line)
                   elif decision == "CHANGES_REQUESTED":
-                      changes_requested.append(line)
+                      # If changes were requested, but a review is actively requested again,
+                      # we override and put it in "Needs Review"
+                      if review_requests_count > 0:
+                          needs_review.append(line)
+                      else:
+                          changes_requested.append(line)
                   else:
                       needs_review.append(line)
 
