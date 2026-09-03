@@ -52,7 +52,13 @@ jobs:
               message = "### Live PR Queue\n\n🎉 *No open PRs waiting for review!*"
           else:
               needs_review, changes_requested, approved = [], [], []
-              now = datetime.now(ZoneInfo("America/Anchorage"))
+
+              # Set up local timezone
+              local_tz = ZoneInfo("America/Anchorage")
+              now = datetime.now(local_tz)
+
+              # Configuration for stale PRs
+              STALE_THRESHOLD_DAYS = 14
 
               for pr in nodes:
                   repo = pr.get("repository", {}).get("name", "repo")
@@ -67,13 +73,27 @@ jobs:
                   days_old = 0
                   if created_raw:
                       try:
-                          dt = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
-                          days_old = max(0, (now - dt).days)
+                          # Parse the UTC time from GitHub
+                          dt_utc = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
+                          # Convert to your local Anchorage time
+                          dt_local = dt_utc.astimezone(local_tz)
+
+                          # Compare just the calendar dates (Year-Month-Day)
+                          days_old = (now.date() - dt_local.date()).days
+                          days_old = max(0, days_old) # Prevent negative numbers just in case
                       except Exception:
                           pass
 
-                  time_str = "Today" if days_old == 0 else f"{days_old}d ago"
-                  stale = " ⚠️" if days_old > 14 else ""
+
+                  if days_old == 0:
+                      time_str = "Today"
+                  elif days_old == 1:
+                      time_str = "Yesterday"
+                  else:
+                      time_str = f"{days_old}d ago"
+
+                  # Apply the stale warning based on our threshold variable
+                  stale = " ⚠️" if days_old >= STALE_THRESHOLD_DAYS else ""
                   conflict = " 🚨 Resolve Merge Conflict" if mergeable == "CONFLICTING" else ""
 
                   # Bot check
