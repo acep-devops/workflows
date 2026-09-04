@@ -26,7 +26,7 @@ jobs:
             ORG_FILTER="$ORG_FILTER org:$org"
           done
 
-          QUERY="query { search(query: \"$ORG_FILTER is:pr is:open draft:false\", type: ISSUE, first: 50) { issueCount nodes { ... on PullRequest { number title url reviewDecision mergeable createdAt updatedAt author { login } repository { name } reviewRequests(first: 1) { totalCount } } } } }"
+          QUERY="query { search(query: \"$ORG_FILTER is:pr is:open draft:false archived:false\", type: ISSUE, first: 50) { issueCount nodes { ... on PullRequest { number title url reviewDecision mergeable createdAt updatedAt author { login } repository { name } reviewRequests(first: 1) { totalCount } } } } }"
           export RAW_JSON=$(gh api graphql -f query="$QUERY")
 
           python3 -c '
